@@ -1,0 +1,12 @@
+{
+  "name": "vibefy",
+  "version": "1.0.0",
+  "description": "Mood-to-Music Generator powered by AI",
+  "type": "module",
+  "scripts": {
+    "dev": "npx serve . -p 5173 --cors",
+    "start": "npx serve . -p 5173 --cors"
+  },
+  "keywords": ["music", "mood", "ai", "spotify", "playlist"],
+  "author": ""
+}
