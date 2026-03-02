@@ -7,6 +7,84 @@ import { extractColors, computePlaylistGradient } from './colorExtractor.js';
 // ─── State ───────────────────────────────────────────────────
 let currentTab = 'text';
 let currentPlaylistData = null;
+let likedArtists = [];
+let blockedArtists = [];
+let selectedEra = 'any';
+let selectedLang = 'any';
+
+// ─── Preferences: Tag Input ───────────────────────────────────
+function initTagInput(inputId, wrapperId, tagsContainerId, list, chipClass) {
+    const input = document.getElementById(inputId);
+    const container = document.getElementById(tagsContainerId);
+    if (!input || !container) return;
+
+    function addTag(val) {
+        const name = val.trim().replace(/,+$/, '');
+        if (!name || list.find(t => t.toLowerCase() === name.toLowerCase())) return;
+        list.push(name);
+        const chip = document.createElement('span');
+        chip.className = `tag-chip ${chipClass}`;
+        chip.innerHTML = `${escHtml(name)}<button onclick="removeTag('${chipClass}','${escHtml(name)}',this)" title="Remove">×</button>`;
+        container.appendChild(chip);
+    }
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            addTag(input.value);
+            input.value = '';
+        } else if (e.key === 'Backspace' && !input.value && list.length) {
+            const last = list[list.length - 1];
+            removeTagByName(chipClass, last);
+        }
+    });
+
+    // Click wrapper to focus input
+    document.getElementById(wrapperId)?.addEventListener('click', () => input.focus());
+}
+
+window.removeTag = function (chipClass, name, btn) {
+    removeTagByName(chipClass, name);
+    btn.closest('.tag-chip')?.remove();
+};
+
+function removeTagByName(chipClass, name) {
+    if (chipClass === 'liked') {
+        likedArtists = likedArtists.filter(a => a !== name);
+    } else {
+        blockedArtists = blockedArtists.filter(a => a !== name);
+    }
+}
+
+// ─── Preferences: Era & Language ─────────────────────────────
+window.selectEra = function (btn) {
+    document.querySelectorAll('.era-pill').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    selectedEra = btn.dataset.era;
+};
+
+window.selectLang = function (btn) {
+    document.querySelectorAll('.lang-pill').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    selectedLang = btn.dataset.lang;
+};
+
+window.togglePrefs = function () {
+    const panel = document.getElementById('prefs-panel');
+    const toggle = document.getElementById('prefs-toggle');
+    panel.classList.toggle('hidden');
+    toggle.classList.toggle('open');
+};
+
+function getPreferences() {
+    return {
+        likedArtists: [...likedArtists],
+        blockedArtists: [...blockedArtists],
+        era: selectedEra,
+        language: selectedLang
+    };
+}
+
 
 // ─── Page Navigation ─────────────────────────────────────────
 function showPage(id) {
@@ -169,9 +247,10 @@ window.generatePlaylist = async function () {
         }
         console.log('Mood data:', moodData, '(source:', moodData._source || 'gemini', ')');
 
-        // Step 2: Spotify track search
+        // Step 2: Spotify track search with preferences
         setLoading(true, 'Searching for perfect tracks…');
-        const tracks = await searchTracks(moodData);
+        const prefs = getPreferences();
+        const tracks = await searchTracks(moodData, prefs);
         console.log('Tracks found:', tracks.length);
 
         if (!tracks.length) {
@@ -341,4 +420,7 @@ document.head.appendChild(shakeStyle);
 document.addEventListener('DOMContentLoaded', () => {
     // Auto-focus textarea on load
     setTimeout(() => document.getElementById('mood-text')?.focus(), 400);
+    // Init tag inputs
+    initTagInput('liked-input', 'liked-wrapper', 'liked-tags', likedArtists, 'liked');
+    initTagInput('blocked-input', 'blocked-wrapper', 'blocked-tags', blockedArtists, 'blocked');
 });
